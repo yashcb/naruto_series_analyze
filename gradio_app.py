@@ -1,5 +1,6 @@
 import gradio as gr
 from theme_classifier import ThemeClassifier
+from character_network import NamedEntityRecognizer, CharacterNetworkGenerator
 
 def get_themes(theme_list_str, subtitles_path, save_path):
     theme_list = theme_list_str.split(',')
@@ -11,7 +12,7 @@ def get_themes(theme_list_str, subtitles_path, save_path):
     output_df = output_df[theme_list]
 
     output_df = output_df[theme_list].sum().reset_index()
-    output_df.columns = ['Theme', 'Score']
+    output_df.columns = ['Theme','Score']
 
     output_chart = gr.BarPlot(
         output_df,
@@ -26,10 +27,20 @@ def get_themes(theme_list_str, subtitles_path, save_path):
 
     return output_chart
 
+def get_character_network(subtitles_path, ner_path):
+    ner = NamedEntityRecognizer()
+    ner_df = ner.get_ners(subtitles_path, ner_path)
+
+    cng = CharacterNetworkGenerator()
+    relationship_df = cng.generate_character_network(ner_df)
+    html = cng.draw_network_graph(relationship_df)
+
+    return html
 
 
 def main():
     with gr.Blocks() as iface:
+        # Theme classification section
         with gr.Row():
             with gr.Column():
                 gr.HTML("<h1>Theme Classification (Zero Shot Classifiers)</h1>")
@@ -42,6 +53,19 @@ def main():
                         save_path = gr.Textbox(label="Save Path")
                         get_themes_button = gr.Button("Get Themes")
                         get_themes_button.click(get_themes, inputs=[theme_list, subtitles_path, save_path], outputs=[plot])
+        
+        # Character network section
+        with gr.Row():
+            with gr.Column():
+                gr.HTML("<h1>Character Networks (NERs and Graph)</h1>")
+                with gr.Row():
+                    with gr.Column():
+                        network_html = gr.HTML()
+                    with gr.Column():
+                        subtitles_path = gr.Textbox(label="Subtitles Path")
+                        ner_path = gr.Textbox(label="NERs save path")
+                        get_network_graph_button = gr.Button("Get Character Graph")
+                        get_network_graph_button.click(get_character_network, inputs=[subtitles_path, ner_path], outputs=[network_html])
     
     iface.launch(share=True)
 
